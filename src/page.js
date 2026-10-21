@@ -236,57 +236,8 @@ export function buildPage({ host, LG, createChart, connection, sqlLog, duckdbVer
 
   /* ---------------------------------------------------------- the grid */
 
-  /** Resolves once the first figures are in, so the histograms queue behind them. */
-  let openFacets;
-  const facetGate = new Promise((ok) => { openFacets = ok; });
-
   const request = (filters, groupBy, quick = '') => ({ filters, sort: [], range: null, groupBy, quick });
   const realGroups = (groups) => (groups ?? []).filter((g) => !g.grouping?.[0]);
-
-  /**
-   * The header histograms. The grid asks for one answer per column per filter
-   * change; each is one `GROUP BY` through the same source, with the column's
-   * own filter already removed by the grid. Bar edges are fixed so the bars do
-   * not move under the pointer.
-   */
-  function facetProvider(getSource) {
-    const first = new Map();
-    return async (req) => {
-      await facetGate;
-      const source = getSource();
-      const agg = await source.aggregate(
-        request(req.filters, [req.colId], req.quick ?? ''),
-        [{ id: 'n', col: 'code', fn: 'count' }],
-      );
-      const groups = realGroups(agg.groups).map((g) => ({ key: g.keys[0], n: num(g.values.n) }));
-      let out;
-      if (req.colId === 'country') {
-        const edges = first.get('country') ?? built.countries.slice(0, 10);
-        first.set('country', edges);
-        const counts = edges.map((key) => groups.find((g) => g.key === key)?.n ?? 0);
-        out = { bounds: { kind: 'category', buckets: edges.map((value) => ({ value })) }, counts, kind: 'category' };
-      } else if (req.colId === 'nutri_score') {
-        const counts = GRADES.map((key) => groups.find((g) => g.key === key)?.n ?? 0);
-        out = { bounds: { kind: 'category', buckets: GRADES.map((value) => ({ value })) }, counts, kind: 'category' };
-      } else {
-        const edges = NUMERIC_EDGES[req.colId];
-        const buckets = edges.slice(0, -1).map((from, i) => ({ from, to: edges[i + 1] }));
-        const counts = buckets.map(() => 0);
-        for (const g of groups) {
-          const v = num(g.key);
-          if (v == null) continue;
-          const i = buckets.findIndex((b) => v >= b.from && v < b.to);
-          if (i >= 0) counts[i] += g.n;
-        }
-        out = {
-          bounds: { kind: 'numeric', strategy: 'equal', min: edges[0], max: edges.at(-1), buckets },
-          counts, kind: 'numeric',
-        };
-      }
-      if (!first.has(`${req.colId}:all`)) { first.set(`${req.colId}:all`, true); out.unfiltered = out.counts; }
-      return out;
-    };
-  }
 
   function makeSource() {
     const adapter = LG.duckdbAdapter({
@@ -316,7 +267,7 @@ export function buildPage({ host, LG, createChart, connection, sqlLog, duckdbVer
       source,
       toolPanel: { side: 'right', panels: ['filters', 'columns'] },
       showTotalInHeader: true,
-      facets: { enabled: true, collapsed: false, height: 40, provider: facetProvider(() => built.source) },
+      facets: { enabled: true, collapsed: false, height: 40 },
     });
     built.grid = grid;
 
@@ -417,11 +368,9 @@ export function buildPage({ host, LG, createChart, connection, sqlLog, duckdbVer
       feedCategories(realGroups(byCategory.groups).length);
       paintTiles();
       renderPlan();
-      openFacets();
     } catch (error) {
       console.error('[food facts demo] aggregate', error);
       built.error = String(error?.message ?? error);
-      openFacets();
     }
   }
 
