@@ -46,12 +46,12 @@ const noGroup = { allowGroup: false };
  */
 export const COLUMNS = [
   { field: 'code', title: 'Barcode', filter: { type: 'text' }, layout: { width: 120 }, facet: false, ...noGroup },
-  { field: 'product_name', title: 'Product', filter: { type: 'text' }, layout: { width: 250 }, facet: false, ...noGroup },
+  { field: 'product_name', title: 'Product', filter: { type: 'text' }, layout: { width: 200 }, facet: false, ...noGroup },
   { field: 'brand', title: 'Brand', filter: { type: 'text' }, layout: { width: 150 }, facet: false, ...noGroup },
-  { field: 'country', title: 'Country', filter: { type: 'set' }, layout: { width: 130 }, ...noGroup },
-  { field: 'category', title: 'Category', filter: { type: 'text' }, layout: { width: 200 }, facet: false, ...noGroup },
+  { field: 'country', title: 'Country', filter: { type: 'set' }, layout: { width: 165 }, ...noGroup },
+  { field: 'category', title: 'Category', filter: { type: 'text' }, layout: { width: 175 }, facet: false, ...noGroup },
   {
-    field: 'nutri_score', title: 'Nutri-Score', filter: { type: 'set' }, layout: { width: 140 }, ...noGroup,
+    field: 'nutri_score', title: 'Nutri-Score', filter: { type: 'set' }, layout: { width: 170 }, ...noGroup,
     cell: {
       decoration: 'pill',
       variant: {

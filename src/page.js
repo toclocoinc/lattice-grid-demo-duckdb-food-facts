@@ -426,7 +426,7 @@ export function buildPage({ host, LG, createChart, connection, sqlLog, duckdbVer
   }
 
   const CATEGORY_COLUMNS = [
-    { field: 'name', title: 'Category', layout: { width: 200 }, allowGroup: false },
+    { field: 'name', title: 'Category', layout: { width: 235 }, allowGroup: false },
     { field: 'products', title: 'Products', type: 'number', format: { decimals: 0 }, layout: { width: 90 }, allowGroup: false },
     { field: 'scored', title: 'With a grade', type: 'number', format: { decimals: 0 }, layout: { width: 105 }, allowGroup: false },
     { field: 'sugar', title: 'Median sugar', type: 'number', format: { decimals: 1 }, layout: { width: 105 }, allowGroup: false },
