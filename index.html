@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>4.8 million food products, explored like a notebook, in a tab: DuckDB and Lattice Grid</title>
+    <meta
+      name="description"
+      content="The Open Food Facts product database, 4.8 million products in one Parquet file, filtered, searched, grouped by category and charted live in the browser with DuckDB-Wasm and Lattice Grid. Data: Open Food Facts contributors, ODbL."
+    />
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./node_modules/@toclocoinc/lattice-grid/lattice-grid.min.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main id="app" class="app">
+      <header class="masthead">
+        <h1>4.8 million products, explored like a notebook, in a tab</h1>
+        <p class="lede">
+          Open Food Facts is a shared database of food products from around the world. This page holds
+          <span id="row-total">4.8 million</span> of them in one file and asks it questions live in your browser, the way you
+          would in a notebook on a laptop: filter by country, brand and Nutri-Score, search by name, group by category
+          for medians, and watch the chart follow. Every step is a query, and the SQL it ran is shown below.
+        </p>
+      </header>
+      <div id="loading" class="loading" role="status">
+        <p class="loading-message">Starting...</p>
+      </div>
+      <div id="dashboard" class="pending"></div>
+      <footer class="colophon">
+        Data: <a href="https://world.openfoodfacts.org">Open Food Facts</a> product database, by
+        <strong>Open Food Facts contributors</strong>, available under the
+        <a href="https://opendatacommons.org/licenses/odbl/1-0/">Open Database Licence (ODbL)</a>, with the individual
+        contents under the <a href="https://opendatacommons.org/licenses/dbcl/1-0/">Database Contents Licence (DbCL)</a>.
+        Product images are not used. This page shows a column extract of the database; data derived from it and shared
+        is shared under the ODbL, with the same attribution. Nutrient values that cannot be real (more than 100 g of
+        sugar or salt in 100 g, more than 900 kcal) are left blank.
+      </footer>
+    </main>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

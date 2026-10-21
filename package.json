@@ -1,0 +1,22 @@
+{
+  "name": "lattice-grid-demo-duckdb-food-facts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "dependencies": {
+    "@toclocoinc/lattice-grid": "^1.110.3"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@duckdb/node-api": "^1.5.5-r.5"
+  },
+  "description": "4.8 million Open Food Facts products, explored like a notebook in a tab: Lattice Grid over DuckDB-Wasm reading Parquet by byte range.",
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "verify": "node tools/verify.mjs",
+    "build-data": "node tools/build-parquet.mjs"
+  }
+}
