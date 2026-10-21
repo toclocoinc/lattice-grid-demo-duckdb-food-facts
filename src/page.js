@@ -213,9 +213,11 @@ export function buildPage({ host, LG, createChart, connection, sqlLog, duckdbVer
   /** The grid's filter, from the controls. Header filters the visitor adds replace it, and vice versa. */
   function scopeTree() {
     const conditions = [];
-    if (state.country) conditions.push({ col: 'country', op: 'eq', value: state.country });
+    /* Exact matches: the values are the file's own, and a case-folded `LOWER(country) = ...`
+       cannot be answered from a row group's min and max, where a plain `country = ?` can. */
+    if (state.country) conditions.push({ col: 'country', op: 'eq', value: state.country, caseSensitive: true });
     if (state.grade === 'graded') conditions.push({ col: 'nutri_score', op: 'notBlank' });
-    else if (state.grade) conditions.push({ col: 'nutri_score', op: 'eq', value: state.grade });
+    else if (state.grade) conditions.push({ col: 'nutri_score', op: 'eq', value: state.grade, caseSensitive: true });
     if (state.brand) conditions.push({ col: 'brand', op: 'contains', value: state.brand });
     if (conditions.length === 0) return null;
     return conditions.length === 1 ? conditions[0] : { op: 'and', conditions };
@@ -385,7 +387,7 @@ export function buildPage({ host, LG, createChart, connection, sqlLog, duckdbVer
         ]),
         source.aggregate(request(filters, ['category'], quick), [
           { id: 'products', col: 'code', fn: 'count' },
-          { id: 'scored', col: 'nutri_score', fn: 'count' },
+          { id: 'scored', col: 'nutri_score', fn: 'countValues' },
           { id: 'sugar', col: 'sugar_g', fn: 'median' },
           { id: 'salt', col: 'salt_g', fn: 'median' },
           { id: 'energy', col: 'energy_kcal', fn: 'median' },
@@ -456,7 +458,7 @@ export function buildPage({ host, LG, createChart, connection, sqlLog, duckdbVer
       const kind = entry.sql.startsWith('DESCRIBE') ? 'describe'
         : entry.sql.includes('median(') && entry.sql.includes('GROUP BY ROLLUP') ? 'categories'
           : entry.sql.includes('median(') ? 'medians'
-            : entry.sql.includes('GROUP BY ROLLUP') ? (entry.sql.includes('"nutri_score"') && entry.sql.includes('count("code")') && !entry.sql.includes('"country" AS') ? 'chart' : 'histogram')
+            : entry.sql.includes('GROUP BY ROLLUP') ? (entry.sql.includes('GROUP BY ROLLUP("nutri_score")') && entry.sql.includes('AS "m0"') ? 'chart' : 'histogram')
               : entry.sql.includes('__lattice_total') || entry.sql.includes('__lattice_match') ? 'count'
                 : /\bLIMIT\b/.test(entry.sql) ? 'rows' : 'other';
       kinds.set(kind, entry);
