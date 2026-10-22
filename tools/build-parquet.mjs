@@ -124,7 +124,7 @@ await conn.run(`
       CASE WHEN ${per100g('energy-kcal')} BETWEEN 0 AND 900 THEN round(${per100g('energy-kcal')}::DOUBLE, 0) END::DOUBLE AS energy_kcal
     FROM ${limit ? `(SELECT * FROM ${read} LIMIT ${limit})` : read}
     ORDER BY country NULLS LAST, category NULLS LAST, code
-  ) TO '${q(tmp)}' (FORMAT parquet, COMPRESSION zstd, ROW_GROUP_SIZE ${ROW_GROUP_SIZE})
+  ) TO '${q(tmp)}' (FORMAT parquet, COMPRESSION zstd, ROW_GROUP_SIZE ${ROW_GROUP_SIZE}, WRITE_BLOOM_FILTER false)
 `);
 await rm(outFile, { force: true });
 await rename(tmp, outFile);

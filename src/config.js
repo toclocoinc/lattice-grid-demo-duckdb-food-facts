@@ -13,7 +13,7 @@
  */
 
 export const DATA_URL =
-  'https://data.latticegrid.dev/duckdb/lattice-grid-demo-duckdb-food-facts/off-products.parquet';
+  'https://data.latticegrid.dev/duckdb/lattice-grid-demo-duckdb-food-facts/v2/off-products.parquet';
 
 /** What `?data=local` reads: the file `npm run build-data` writes. */
 export const LOCAL_DATA_URL = './data/off-products.parquet';

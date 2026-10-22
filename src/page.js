@@ -409,7 +409,8 @@ export function buildPage({ host, LG, createChart, connection, sqlLog, duckdbVer
           : entry.sql.includes('median(') ? 'medians'
             : entry.sql.includes('GROUP BY ROLLUP') ? (entry.sql.includes('GROUP BY ROLLUP("nutri_score")') && entry.sql.includes('AS "m0"') ? 'chart' : 'histogram')
               : entry.sql.includes('__lattice_total') || entry.sql.includes('__lattice_match') ? 'count'
-                : /\bLIMIT\b/.test(entry.sql) ? 'rows' : 'other';
+                : /\bGROUP BY\b/.test(entry.sql) ? 'histogram'
+                  : /\bLIMIT\b/.test(entry.sql) ? 'rows' : 'other';
       kinds.set(kind, entry);
     }
     return kinds;
