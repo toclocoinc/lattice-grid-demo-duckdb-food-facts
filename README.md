@@ -5,6 +5,17 @@ by HTTP byte range. Filter by country, brand and Nutri-Score, search names and b
 histograms, see the biggest categories with their medians, and watch the Nutri-Score chart follow. Every one of those is
 a DuckDB query, and the page shows the SQL it ran with its timing.
 
+## Loading
+
+The first visit has three slow steps: the query engine (about 34 MB of WebAssembly, a fifth of that on the wire), starting it, and reading the opening scope (French products with a Nutri-Score) from the Parquet file. The page says what it is doing instead of showing blank space (`src/loading.js`, `src/duckdb.js`, copied from the SaaS demo):
+
+1. **A status line in the static HTML**: spinner, one plain-English sentence and a progress bar, on screen from first paint: "Downloading the query engine (about 34 MB, first visit only): n of m MB", "Starting the engine", "Reading France products with a Nutri-Score (n of m MB)", then "Listing the countries for the picker".
+2. **Real byte counts.** The engine's download is reported by DuckDB-Wasm itself; Parquet reads are counted by a small worker wrapper over a `BroadcastChannel`. The expected total comes from `parquet_metadata()` (the footer, fetched anyway).
+3. **Every panel has a loading state** (`slot()`): the tiles, the chart, the category grid and the product grid are covered until their first answer.
+4. The country list (a scan of one column across the file) is read after the first rows are up, so it is off the critical path.
+
+Measured with Chrome's DevTools protocol, cache disabled, network throttled to 20 Mbps / 40 ms latency for the page and the DuckDB worker alike: first paint 0.5 s, first rows on screen about 10.7 s, tiles, chart and categories about 31 s, fully ready about 35 s (data from data.latticegrid.dev, engine from jsDelivr).
+
 ## Run it
 
 ```

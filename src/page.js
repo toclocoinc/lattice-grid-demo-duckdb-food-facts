@@ -18,6 +18,7 @@
  */
 
 import { dataUrl } from './config.js';
+import { megabytes, slot } from './loading.js';
 import {
   FIELDS, GRADES, DEFAULT_COUNTRY, DEFAULT_GRADE, COUNTRY_CHOICES, TOP_CATEGORIES, COLUMNS, NUMERIC_EDGES,
   fromFile, prettyCountry, prettyCategory, fmt, num,
@@ -56,13 +57,16 @@ function chips(label, options, onPick) {
   return { wrap, select };
 }
 
+/** Columns only the first window of rows reads, not the whole-selection figures. */
+const WINDOW_ONLY = ['code', 'product_name', 'brand'];
+
 const GRADE_CHIPS = [
   { id: '', label: 'Any' },
   { id: 'graded', label: 'Graded' },
   ...GRADES.map((g) => ({ id: g, label: g })),
 ];
 
-export function buildPage({ host, LG, createChart, connection, sqlLog, duckdbVersion }) {
+export function buildPage({ host, LG, createChart, connection, sqlLog, duckdbVersion, status, reads }) {
   const FILE = dataUrl();
 
   const built = {
@@ -123,7 +127,10 @@ export function buildPage({ host, LG, createChart, connection, sqlLog, duckdbVer
   gridHost.setAttribute('aria-label', 'Products');
   const planSection = el('details', 'plan');
   planSection.open = true;
-  host.append(controls, tiles, chartRow, gridSection, planSection);
+  /* Every panel sits under a loading cover until its first answer. */
+  const tilesSlot = slot(tiles, 'Counting the products, then the medians');
+  tilesSlot.el.classList.add('tiles-slot');
+  host.append(controls, tilesSlot.el, chartRow, gridSection, planSection);
 
   /* ------------------------------------------------------------- controls */
 
@@ -132,6 +139,8 @@ export function buildPage({ host, LG, createChart, connection, sqlLog, duckdbVer
   const countrySelect = el('select');
   countrySelect.dataset.control = 'country';
   countrySelect.append(new Option('All countries', ''));
+  /* The full list is read after the first rows are up; until then the opening country is the one choice besides all. */
+  if (state.country) countrySelect.append(new Option(prettyCountry(state.country), state.country));
   countrySelect.addEventListener('change', () => { state.country = countrySelect.value; applyScope(); });
   countryField.append(countrySelect);
 
@@ -206,7 +215,9 @@ export function buildPage({ host, LG, createChart, connection, sqlLog, duckdbVer
   const categoryGridHost = el('div', 'category-grid');
   categoryGridHost.setAttribute('aria-label', 'Biggest categories in the selection');
   categoryBox.append(categoryHead, categoryGridHost);
-  chartRow.append(chartBox, categoryBox);
+  const chartSlot = slot(chartBox, 'Counting products by Nutri-Score, then drawing the chart');
+  const categorySlot = slot(categoryBox, 'Grouping by category, then the medians');
+  chartRow.append(chartSlot.el, categorySlot.el);
 
   /* ------------------------------------------------------------ the filter */
 
@@ -466,20 +477,82 @@ export function buildPage({ host, LG, createChart, connection, sqlLog, duckdbVer
       `SELECT country, count(*) AS n FROM ${fromFile(FILE)} WHERE country IS NOT NULL GROUP BY country ORDER BY n DESC, country LIMIT ${COUNTRY_CHOICES}`,
     );
     built.countries = result.toArray().map((r) => String(r.toJSON().country));
+    const chosen = state.country;
+    countrySelect.length = 1;
     for (const name of built.countries) countrySelect.append(new Option(prettyCountry(name), name));
+    if (chosen && !built.countries.includes(chosen)) countrySelect.append(new Option(prettyCountry(chosen), chosen));
     countrySelect.value = state.country;
   }
 
   paintControls();
-  gridSection.append(gridHost);
+  const gridSlot = slot(gridHost, 'Reading the first rows');
+  gridSection.append(gridSlot.el);
+
+  /**
+   * How many bytes the opening read will fetch (null when the file carries no
+   * statistics to say), so the status line can show a bar. The footer says how
+   * big each column chunk is: the medians, counts and categories read the
+   * numeric and category columns of every row group that can hold the opening
+   * country, while the names and brands are read for the first window of rows,
+   * which sits in one row group. The footer it reads from is fetched anyway.
+   */
+  const expectedBytes = async () => {
+    try {
+      const file = FILE.replaceAll("'", "''");
+      const wholeMatch = FIELDS.filter((f) => !WINDOW_ONLY.includes(f)).map((f) => `'${f}'`).join(', ');
+      const windowOnly = WINDOW_ONLY.map((f) => `'${f}'`).join(', ');
+      const statement = await connection.prepare(
+        `WITH hit AS (SELECT row_group_id FROM parquet_metadata('${file}')
+           WHERE path_in_schema = 'country' AND stats_min_value <= ? AND stats_max_value >= ?),
+         chunks AS (SELECT path_in_schema AS col, total_compressed_size AS size FROM parquet_metadata('${file}')
+           WHERE row_group_id IN (SELECT row_group_id FROM hit))
+         SELECT CAST((SELECT coalesce(sum(size), 0) FROM chunks WHERE col IN (${wholeMatch}))
+              + (SELECT coalesce(sum(size), 0) / greatest(count(DISTINCT 1) * (SELECT count(*) FROM hit), 1) FROM chunks WHERE col IN (${windowOnly})) AS BIGINT) AS bytes`,
+      );
+      try {
+        const row = (await statement.query(state.country, state.country)).toArray()[0]?.toJSON();
+        return num(row?.bytes) || null;
+      } finally { statement.close(); }
+    } catch { return null; }
+  };
+
+  /** The panels whose covers lift as their first answer arrives. */
+  const coverDone = () => {
+    if (built.matchCount != null && built.categories.length > 0) { tilesSlot.hide(); categorySlot.hide(); }
+    if ((gridHost.querySelector('.lat-body-viewport')?.innerText ?? '').trim().length > 20) gridSlot.hide();
+    if (built.categories.length > 0 && chartBox.querySelector('svg, canvas')) chartSlot.hide();
+  };
+
   built.ready = (async () => {
-    await loadCountries();
+    const what = `${prettyCountry(state.country)} products${state.grade === 'graded' ? ' with a Nutri-Score' : ''}`;
+    status.set(`Looking up where ${what} sit in the file`);
+    const expected = await expectedBytes();
+    const before = reads.bytes;
+    const line = (read) => {
+      const total = Math.max(expected ?? 0, read);
+      return expected
+        ? [`Reading ${what} (${megabytes(read)} of ${megabytes(total)})`, read / total]
+        : [`Reading ${what} (${megabytes(read)} so far)`, null];
+    };
+    status.set(...line(0));
+    const stop = reads.onRead((total) => status.set(...line(total - before)));
     mountGrid();
     paintTheme();
     const deadline = Date.now() + 120000;
-    while (Date.now() < deadline && !(built.grid.rows.count() > 0 && built.matchCount != null && built.categories.length > 0)) {
+    while (Date.now() < deadline && !(built.grid.rows.count() > 0 && built.matchCount != null && built.categories.length > 0 && gridSlot.el.querySelector('.panel-loading[hidden]'))) {
+      coverDone();
       await new Promise((r) => setTimeout(r, 120));
     }
+    stop();
+    status.set('Drawing the chart and the histograms');
+    coverDone();
+    for (let i = 0; i < 50 && chartSlot.el.querySelector('.panel-loading:not([hidden])'); i++) {
+      await new Promise((r) => setTimeout(r, 120));
+      coverDone();
+    }
+    chartSlot.hide();
+    status.set('Listing the countries for the picker');
+    await loadCountries();
     if (built.matchCount == null) throw new Error('the first window of rows never arrived');
     built.totalRows = num((await connection.query(`SELECT count(*) AS n FROM ${fromFile(FILE)}`)).toArray()[0].toJSON().n);
     const total = document.querySelector('#row-total');

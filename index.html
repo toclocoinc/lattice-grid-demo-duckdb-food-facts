@@ -23,8 +23,13 @@
           for medians, and watch the chart follow. Every step is a query, and the SQL it ran is shown below.
         </p>
       </header>
-      <div id="loading" class="loading" role="status">
-        <p class="loading-message">Starting...</p>
+      <div id="loading" class="loading">
+        <div class="load-status" role="status" aria-live="polite">
+          <span class="spinner"></span>
+          <p class="load-text">Starting. The first visit downloads the query engine, so it takes a moment.</p>
+          <div class="load-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" hidden><div class="load-fill"></div></div>
+        </div>
+        <p class="loading-message" hidden></p>
       </div>
       <div id="dashboard" class="pending"></div>
       <footer class="colophon">
