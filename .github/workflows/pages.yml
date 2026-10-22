@@ -28,8 +28,8 @@ jobs:
         with:
           node-version: '22'
 
-      # The page loads the grid straight out of node_modules, so the
-      # dependencies are part of what gets published rather than a build input.
+      # The page loads the grid from cdn.latticegrid.dev, so the
+      # grid is not part of what gets published.
       # `npm run verify` is not run here: it needs the Parquet file, which is
       # built from Wikimedia's dumps on the release box and is not in the repo.
       - name: Install
