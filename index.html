@@ -9,7 +9,12 @@
       content="The Open Food Facts product database, 4.8 million products in one Parquet file, filtered, searched, grouped by category and charted live in the browser with DuckDB-Wasm and Lattice Grid. Data: Open Food Facts contributors, ODbL."
     />
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="https://cdn.latticegrid.dev/lattice-grid@1.111.7/lattice-grid.min.css?v=20261022" />
+    <script>
+      /* The one place the grid's version is named; main.js reads it for the script and the charts module. */
+      window.LATTICE_GRID_BASE = 'https://cdn.latticegrid.dev/lattice-grid@1.123.3/';
+      window.LATTICE_GRID_STAMP = '20261116';
+      document.write('<link rel="stylesheet" href="' + window.LATTICE_GRID_BASE + 'lattice-grid.min.css?v=' + window.LATTICE_GRID_STAMP + '" />');
+    </script>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
