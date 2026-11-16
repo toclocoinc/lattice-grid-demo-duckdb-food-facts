@@ -7,16 +7,14 @@
  * evaluations. `start()` is called and the module finishes.
  */
 
-import * as LG from 'https://cdn.latticegrid.dev/lattice-grid@1.111.7/lattice-grid.esm.min.js?v=20261022';
-import { createChart } from 'https://cdn.latticegrid.dev/lattice-grid@1.111.7/modules/charts.esm.min.js?v=20261022';
 import { DEMO_LICENCE } from './src/licence.js';
 import { startDuckDB, recordingConnection, ENGINE_BYTES } from './src/duckdb.js';
 import { buildPage } from './src/page.js';
 import { createStatus, megabytes } from './src/loading.js';
 
-/* Applied before anything is drawn: a grid keeps whatever licence was in force
-   when it was built. */
-LG.setLicence(DEMO_LICENCE);
+/* The grid's address is set once, in index.html (LATTICE_GRID_BASE). */
+const BASE = window.LATTICE_GRID_BASE;
+const STAMP = `?v=${window.LATTICE_GRID_STAMP}`;
 
 const loading = document.querySelector('#loading');
 const message = loading.querySelector('.loading-message');
@@ -44,6 +42,13 @@ function showError(error) {
 async function start() {
   const started = performance.now();
   try {
+    const [LG, { createChart }] = await Promise.all([
+      import(`${BASE}lattice-grid.esm.min.js${STAMP}`),
+      import(`${BASE}modules/charts.esm.min.js${STAMP}`),
+    ]);
+    /* Applied before anything is drawn: a grid keeps whatever licence was in force
+       when it was built. */
+    LG.setLicence(DEMO_LICENCE);
     const { connection, version, close, reads } = await startDuckDB(
       (text) => status.set(text),
       ({ loaded }) => status.set(
